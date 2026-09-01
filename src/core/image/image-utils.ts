@@ -214,13 +214,21 @@ export function resizeImage(
 }
 
 /**
- * Crops an image to a specified region
+ * Crops or extends an image to a specified region.
+ *
+ * The region is in source-image pixels and may sit partially (or entirely)
+ * outside the source: negative `x`/`y` pads left/top, and a width/height
+ * larger than the source pads right/bottom. New pixels are left fully
+ * transparent (PNG alpha); existing pixels — including existing transparency
+ * — are copied unchanged. This is what mspaint-style canvas-resize uses when
+ * you drag a handle outward.
+ *
  * @param imageDataUrl - Source image as data URL
- * @param x - X coordinate of crop region (top-left)
- * @param y - Y coordinate of crop region (top-left)
- * @param width - Width of crop region
- * @param height - Height of crop region
- * @returns Promise resolving to cropped image data URL
+ * @param x - X coordinate of the region (top-left); may be negative
+ * @param y - Y coordinate of the region (top-left); may be negative
+ * @param width - Width of the destination canvas
+ * @param height - Height of the destination canvas
+ * @returns Promise resolving to a PNG data URL
  */
 export function cropImage(
   imageDataUrl: string,
@@ -230,37 +238,33 @@ export function cropImage(
   height: number
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    const destWidth = Math.round(width);
+    const destHeight = Math.round(height);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || destWidth <= 0 || destHeight <= 0) {
+      reject(new Error('Invalid crop region dimensions'));
+      return;
+    }
+
     const img = new Image();
     
     img.onload = () => {
       try {
-        // Validate crop region
-        if (x < 0 || y < 0 || width <= 0 || height <= 0) {
-          reject(new Error('Invalid crop region dimensions'));
-          return;
-        }
-        
-        if (x + width > img.width || y + height > img.height) {
-          reject(new Error('Crop region exceeds image bounds'));
-          return;
-        }
-        
-        // Create canvas for cropped region
+        // Destination canvas starts fully transparent (default 2d context).
+        // Do not fill — that would flatten alpha into an opaque color.
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = destWidth;
+        canvas.height = destHeight;
         
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           reject(new Error('Failed to get canvas context'));
           return;
         }
+
+        // Place the source so destination (0, 0) maps to source (x, y).
+        // Negative x/y shifts the image right/down, leaving transparent padding.
+        ctx.drawImage(img, -x, -y);
         
-        // Draw cropped region
-        // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-        ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
-        
-        // Convert to data URL
         const croppedDataUrl = canvas.toDataURL('image/png');
         resolve(croppedDataUrl);
       } catch (error) {
@@ -432,11 +436,69 @@ export interface CropRegion {
 export type CropHandleMode = 'move' | 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 /**
+ * Hard cap on a single canvas axis when dragging a handle outward. Prevents
+ * a runaway mouse move from allocating a multi-gigapixel canvas. 16384 is
+ * within typical browser canvas limits.
+ */
+export const MAX_IMAGE_DIMENSION = 16384;
+
+/**
+ * Layout for previewing a crop/extend region over the source image.
+ * The layout box is the union of the source image and the region, so
+ * extending left/up still has a non-negative overlay position (the image
+ * is offset inside the box instead).
+ */
+export interface CropCanvasLayout {
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  imageX: number;
+  imageY: number;
+  overlayX: number;
+  overlayY: number;
+}
+
+/**
+ * Computes the preview layout box for a crop/extend region sitting on a
+ * source image of the given size. Used by the image editor so dragging a
+ * handle outward grows the frame (and shows transparent padding) instead of
+ * clipping the overlay to the current bitmap.
+ */
+export function computeCropCanvasLayout(
+  region: CropRegion,
+  imageWidth: number,
+  imageHeight: number
+): CropCanvasLayout {
+  const originX = Math.min(0, region.x);
+  const originY = Math.min(0, region.y);
+  const right = Math.max(imageWidth, region.x + region.width);
+  const bottom = Math.max(imageHeight, region.y + region.height);
+  // `-0` from negating origin 0 fails Object.is / Jest toBe(0).
+  const abs0 = (n: number): number => (n === 0 ? 0 : n);
+  return {
+    originX: abs0(originX),
+    originY: abs0(originY),
+    width: right - originX,
+    height: bottom - originY,
+    imageX: abs0(-originX),
+    imageY: abs0(-originY),
+    overlayX: abs0(region.x - originX),
+    overlayY: abs0(region.y - originY),
+  };
+}
+
+/**
  * Computes the new crop region after dragging a handle (or the selection
  * body, for 'move') by (dxNatural, dyNatural) natural image pixels away from
- * startRegion. The result is clamped so the region never leaves the
- * [0, imageWidth] x [0, imageHeight] bounds and never shrinks below minSize
- * on either axis.
+ * startRegion.
+ *
+ * Resize handles may move past the current image bounds — that is canvas
+ * extend, and the extra area is filled with transparency on commit. The
+ * region never shrinks below minSize on either axis, and never grows past
+ * MAX_IMAGE_DIMENSION. 'move' still stays inside the image (the editor does
+ * not use it for canvas-resize).
+ *
  * @param mode - Which handle is being dragged
  * @param startRegion - The crop region at the start of the drag
  * @param dxNatural - Horizontal drag distance, in natural image pixels
@@ -456,6 +518,7 @@ export function computeCropHandleDrag(
   minSize = 1
 ): CropRegion {
   const clamp = (value: number, lo: number, hi: number): number => Math.min(Math.max(value, lo), hi);
+  const maxDim = MAX_IMAGE_DIMENSION;
 
   let { x, y, width, height } = startRegion;
 
@@ -466,20 +529,28 @@ export function computeCropHandleDrag(
   }
 
   if (mode.includes('n')) {
-    const newY = clamp(startRegion.y + dyNatural, 0, startRegion.y + startRegion.height - minSize);
+    const newY = clamp(
+      startRegion.y + dyNatural,
+      startRegion.y + startRegion.height - maxDim,
+      startRegion.y + startRegion.height - minSize
+    );
     height = startRegion.height - (newY - startRegion.y);
     y = newY;
   }
   if (mode.includes('s')) {
-    height = clamp(startRegion.height + dyNatural, minSize, imageHeight - startRegion.y);
+    height = clamp(startRegion.height + dyNatural, minSize, maxDim);
   }
   if (mode.includes('w')) {
-    const newX = clamp(startRegion.x + dxNatural, 0, startRegion.x + startRegion.width - minSize);
+    const newX = clamp(
+      startRegion.x + dxNatural,
+      startRegion.x + startRegion.width - maxDim,
+      startRegion.x + startRegion.width - minSize
+    );
     width = startRegion.width - (newX - startRegion.x);
     x = newX;
   }
   if (mode.includes('e')) {
-    width = clamp(startRegion.width + dxNatural, minSize, imageWidth - startRegion.x);
+    width = clamp(startRegion.width + dxNatural, minSize, maxDim);
   }
 
   return { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) };

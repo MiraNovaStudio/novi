@@ -228,18 +228,76 @@ describe('ImageEditor crop handles (always-on mspaint canvas-resize style)', () 
     expect(overlay.style.height).toBe('300px');
   });
 
-  it('does not let an edge drag push the crop region outside the image bounds', () => {
+  it('dragging an edge outward live-previews a larger canvas instead of clamping to the image', () => {
     const overlay = getOverlay(editor.getElement());
     const eastEdge = getHandle(overlay, 'e');
 
-    // Try to drag the east edge far past the right edge of a 400px-wide image.
     dispatchMouse(eastEdge, 'mousedown', 400, 150);
-    dispatchMouse(window, 'mousemove', 2000, 150);
+    dispatchMouse(window, 'mousemove', 520, 150); // drag 120px right
 
     const preview = getOverlay(editor.getElement());
-    expect(preview.style.width).toBe('400px');
+    expect(preview.style.width).toBe('520px'); // 400 + 120
+    expect(preview.style.height).toBe('300px');
 
-    dispatchMouse(window, 'mouseup', 2000, 150);
+    const imageContainer = editor.getElement().querySelector('.image-viewport-scroll > div') as HTMLElement;
+    expect(imageContainer.style.width).toBe('520px');
+
+    dispatchMouse(window, 'mouseup', 520, 150);
+  });
+
+  it('releasing an outward east drag commits an extended canvas (cropImage with width > original)', async () => {
+    const overlay = getOverlay(editor.getElement());
+    const eastEdge = getHandle(overlay, 'e');
+
+    dispatchMouse(eastEdge, 'mousedown', 400, 150);
+    dispatchMouse(window, 'mousemove', 500, 150);
+    dispatchMouse(window, 'mouseup', 500, 150);
+    await flush();
+
+    expect(mockCropImage).toHaveBeenCalledWith('file:///fake.jpg', 0, 0, 500, 300);
+  });
+
+  it('dragging the west edge outward live-previews padding to the left (negative x)', () => {
+    const overlay = getOverlay(editor.getElement());
+    const westEdge = getHandle(overlay, 'w');
+
+    dispatchMouse(westEdge, 'mousedown', 0, 150);
+    dispatchMouse(window, 'mousemove', -80, 150);
+
+    const preview = getOverlay(editor.getElement());
+    // Layout offsets the image so the overlay stays at 0 inside a larger frame.
+    expect(preview.style.left).toBe('0px');
+    expect(preview.style.width).toBe('480px'); // 400 + 80
+    expect(preview.style.height).toBe('300px');
+
+    const img = editor.getElement().querySelector('img') as HTMLImageElement;
+    expect(img.style.left).toBe('80px');
+
+    dispatchMouse(window, 'mouseup', -80, 150);
+  });
+
+  it('releasing an outward west drag commits with negative x so transparent padding is on the left', async () => {
+    const overlay = getOverlay(editor.getElement());
+    const westEdge = getHandle(overlay, 'w');
+
+    dispatchMouse(westEdge, 'mousedown', 0, 150);
+    dispatchMouse(window, 'mousemove', -80, 150);
+    dispatchMouse(window, 'mouseup', -80, 150);
+    await flush();
+
+    expect(mockCropImage).toHaveBeenCalledWith('file:///fake.jpg', -80, 0, 480, 300);
+  });
+
+  it('releasing an outward north drag commits with negative y so transparent padding is on the top', async () => {
+    const overlay = getOverlay(editor.getElement());
+    const northEdge = getHandle(overlay, 'n');
+
+    dispatchMouse(northEdge, 'mousedown', 200, 0);
+    dispatchMouse(window, 'mousemove', 200, -40);
+    dispatchMouse(window, 'mouseup', 200, -40);
+    await flush();
+
+    expect(mockCropImage).toHaveBeenCalledWith('file:///fake.jpg', 0, -40, 400, 340);
   });
 
   it('releasing without having moved a handle is a no-op (no cropImage call)', () => {

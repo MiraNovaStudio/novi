@@ -12,7 +12,7 @@ import { ImageEditorService } from '../../core/image/image-editor.js';
 import {
   getImageDimensions, resizeImage, calculateProportionalDimensions,
   cropImage, setTransparency, supportsTransparency,
-  convertFormat, computeCropHandleDrag, clampZoom,
+  convertFormat, computeCropHandleDrag, computeCropCanvasLayout, clampZoom,
   getDataUrlImageFormat, getImageBase64Payload, normalizeImageSaveFormat,
   buildImageSaveAsDialogOptions,
 } from '../../core/image/image-utils.js';
@@ -305,22 +305,7 @@ export class ImageEditor extends Component {
     this.imgEl.alt = this.filePath;
     if (!this.panDrag) this.imgEl.style.cursor = this.imageUrl ? 'grab' : 'default';
     this.imgEl.style.display = this.imageUrl ? 'block' : 'none';
-    if (this.dims) {
-      this.imgEl.style.width = `${Math.round(this.dims.width * this.viewZoom)}px`;
-      this.imgEl.style.height = `${Math.round(this.dims.height * this.viewZoom)}px`;
-    } else {
-      this.imgEl.style.width = '';
-      this.imgEl.style.height = '';
-    }
-
-    // When the zoomed image is larger than the viewport, anchor it to the
-    // top-left instead of centering — centering an overflowing flex child
-    // makes part of the overflow unreachable by scrolling.
-    const displayW = this.dims ? this.dims.width * this.viewZoom : 0;
-    const displayH = this.dims ? this.dims.height * this.viewZoom : 0;
-    const overflowsViewport = displayW > this.viewportEl.clientWidth || displayH > this.viewportEl.clientHeight;
-    this.viewportEl.style.alignItems = overflowsViewport ? 'flex-start' : 'center';
-    this.viewportEl.style.justifyContent = overflowsViewport ? 'flex-start' : 'center';
+    this.applyImageFrameLayout();
 
     // Viewport background
     this.viewportEl.style.background = this.showCheckerboard
@@ -366,7 +351,7 @@ export class ImageEditor extends Component {
     this.toolbarEl.appendChild(this.makeBtn('Redo \u2192', () => this.handleRedo(), this.historyIndex < this.history.length - 1 && !this.processing, 'Redo (Ctrl+Y)'));
     this.toolbarEl.appendChild(this.makeSep());
 
-    // Resize (drag the handles on the image itself to crop \u2014 see renderCropOverlay)
+    // Resize (drag the handles on the image itself to crop or extend the canvas)
     this.toolbarEl.appendChild(this.makeBtn('Resize...', () => this.showResizeDialog(), canEdit));
 
     this.toolbarEl.appendChild(this.makeSep());
@@ -495,22 +480,75 @@ export class ImageEditor extends Component {
   // --- Crop Overlay ---
 
   /**
+   * Sizes the image frame to the union of the current bitmap and the live
+   * crop/extend region, and offsets the <img> inside it. Extending left/up
+   * therefore grows the container (so the viewport can scroll to the new
+   * transparent padding) instead of painting the overlay at a negative
+   * coordinate that overflow:auto would clip.
+   */
+  private applyImageFrameLayout(): void {
+    if (!this.dims) {
+      this.imageContainerEl.style.width = '';
+      this.imageContainerEl.style.height = '';
+      this.imageContainerEl.style.background = '';
+      this.imgEl.style.position = '';
+      this.imgEl.style.left = '';
+      this.imgEl.style.top = '';
+      this.imgEl.style.width = '';
+      this.imgEl.style.height = '';
+      return;
+    }
+
+    const z = this.viewZoom;
+    const region = this.cropRegion ?? { x: 0, y: 0, width: this.dims.width, height: this.dims.height };
+    const layout = computeCropCanvasLayout(region, this.dims.width, this.dims.height);
+    const extendsCanvas = region.x < 0 || region.y < 0
+      || region.x + region.width > this.dims.width
+      || region.y + region.height > this.dims.height;
+
+    setStyles(this.imageContainerEl, {
+      width: `${Math.round(layout.width * z)}px`,
+      height: `${Math.round(layout.height * z)}px`,
+      // Checkerboard only in the new padding so a drag-outward preview
+      // reads as "transparent canvas" even if the viewport checkerboard
+      // toggle is off. The <img> covers the original pixels.
+      background: extendsCanvas
+        ? 'repeating-conic-gradient(#808080 0% 25%, #404040 0% 50%) 50% / 16px 16px'
+        : 'transparent',
+    });
+    setStyles(this.imgEl, {
+      position: 'absolute',
+      left: `${Math.round(layout.imageX * z)}px`,
+      top: `${Math.round(layout.imageY * z)}px`,
+      width: `${Math.round(this.dims.width * z)}px`,
+      height: `${Math.round(this.dims.height * z)}px`,
+    });
+
+    const displayW = layout.width * z;
+    const displayH = layout.height * z;
+    const overflowsViewport = displayW > this.viewportEl.clientWidth || displayH > this.viewportEl.clientHeight;
+    this.viewportEl.style.alignItems = overflowsViewport ? 'flex-start' : 'center';
+    this.viewportEl.style.justifyContent = overflowsViewport ? 'flex-start' : 'center';
+  }
+
+  /**
    * Renders the always-on-canvas crop handles (mspaint canvas-resize style):
    * 8 handles sit on the image's border at all times — no separate "Crop"
-   * mode to enter first. Dragging a handle live-previews a smaller region
-   * (border + dimming appear only while it differs from the full image);
-   * releasing the mouse commits the crop immediately (see
+   * mode to enter first. Dragging a handle live-previews a smaller (crop) or
+   * larger (extend) region; releasing the mouse commits immediately (see
    * handleCropInteractionUp / commitCrop). The overlay's own box never
    * captures pointer events — only the handles/strips do — so plain
    * click-drag on the image still pans it (see startPanDrag).
    */
   private renderCropOverlay(): void {
     if (this.cropOverlayEl) { this.cropOverlayEl.remove(); this.cropOverlayEl = null; }
+    this.applyImageFrameLayout();
     if (!this.dims || !this.cropRegion || this.processing) return;
 
     // cropRegion is stored in natural image pixels; scale to display pixels for layout.
     const z = this.viewZoom;
     const region = this.cropRegion;
+    const layout = computeCropCanvasLayout(region, this.dims.width, this.dims.height);
     const isFullImage = region.x === 0 && region.y === 0
       && region.width === this.dims.width && region.height === this.dims.height;
 
@@ -521,8 +559,8 @@ export class ImageEditor extends Component {
       border: isFullImage ? '1px dashed rgba(255, 255, 255, 0.5)' : '2px solid #007acc',
       boxShadow: isFullImage ? 'none' : '0 0 0 9999px rgba(0, 0, 0, 0.5)',
       pointerEvents: 'none',
-      left: `${region.x * z}px`,
-      top: `${region.y * z}px`,
+      left: `${layout.overlayX * z}px`,
+      top: `${layout.overlayY * z}px`,
       width: `${region.width * z}px`,
       height: `${region.height * z}px`,
     });
@@ -726,7 +764,9 @@ export class ImageEditor extends Component {
    * the viewport resizes (see the ResizeObserver in onMount) so switching
    * tabs, toggling the sidebar, or resizing the window keeps it fitted. */
   private applyAutoFit(): void {
-    if (!this.autoFit || !this.dims) return;
+    // Don't change zoom mid-drag — growing the frame for an extend preview
+    // can spawn scrollbars and fire the ResizeObserver.
+    if (!this.autoFit || !this.dims || this.cropInteraction) return;
     const pad = ImageEditor.VIEWPORT_PADDING * 2;
     const availW = this.viewportEl.clientWidth - pad;
     const availH = this.viewportEl.clientHeight - pad;
@@ -772,8 +812,8 @@ export class ImageEditor extends Component {
     this.renderCropOverlay();
   }
 
-  /** Releasing a handle commits the crop immediately, like mspaint's canvas
-   * resize — no separate "Apply" step. Undo (Ctrl+Z) reverts it. */
+  /** Releasing a handle commits the crop/extend immediately, like mspaint's
+   * canvas resize — no separate "Apply" step. Undo (Ctrl+Z) reverts it. */
   private handleCropInteractionUp(): void {
     if (!this.cropInteraction) return;
     this.cropInteraction = null;
