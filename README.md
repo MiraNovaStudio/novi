@@ -1,10 +1,12 @@
 # Novi
 
-**A Terminal Development Environment (TDE) built with Electron and TypeScript.**
+**An Editor and Shell Environment (ESE) built with Electron and TypeScript.**
 
-Novi is a terminal-first editor: the shell is the primary workspace, and files, settings, and tools open as tabs around it. It is built for developers who live in the command line and want an editor that stays out of the way.
+Novi is an editor and shell environment for Linux and Windows.  It contains an editor, a terminal, 
+and git integration.  Novi is designed for people who live in the command line and want an editor 
+that stays out of the way.
 
-Built by [MiraNova Studio](https://miranova.studio).
+Novi is developed and maintained by [MiraNova Studio](https://miranova.studio).
 
 ---
 
