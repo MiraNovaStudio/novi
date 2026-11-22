@@ -104,11 +104,21 @@ describe('TerminalService', () => {
 
       it('should not set PROMPT_COMMAND env when falling back to PowerShell', () => {
         (existsSync as jest.Mock).mockReturnValue(false);
+        const previous = process.env.PROMPT_COMMAND;
+        delete process.env.PROMPT_COMMAND;
 
-        terminalService.createSession();
-        const spawnCall = pty.spawn.mock.calls[0];
-        const env = spawnCall[2].env;
-        expect(env.PROMPT_COMMAND).toBeUndefined();
+        try {
+          terminalService.createSession();
+          const spawnCall = pty.spawn.mock.calls[0];
+          const env = spawnCall[2].env;
+          expect(env.PROMPT_COMMAND).toBeUndefined();
+        } finally {
+          if (previous === undefined) {
+            delete process.env.PROMPT_COMMAND;
+          } else {
+            process.env.PROMPT_COMMAND = previous;
+          }
+        }
       });
 
       it('should use WSL bash when shell type is wsl', () => {
