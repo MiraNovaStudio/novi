@@ -298,28 +298,7 @@ Main-process logs are written to date-stamped files under the Electron user-data
 
 ---
 
-## Contributing
-
-1. Fork the repository.
-2. Create a feature branch from `main`.
-3. Keep the change focused. Match existing TypeScript style (vanilla classes, `el()` for DOM, `.js` import specifiers in the renderer).
-4. New `.ts` / `.js` source files start with:
-
-   ```ts
-   /**
-    * © 2025-2026 MiraNova Studio. All rights reserved.
-    */
-   ```
-
-5. Add tests under `src/tests/` for the current yield version. Do not relocate older sprint tests.
-6. Run `npm test` and `npm run lint` before opening a pull request.
-
----
-
 ## License
 
 [MIT](./LICENSE) © 2025-2026 MiraNova Studio
 
----
-
-Built by **MiraNova Studio**
