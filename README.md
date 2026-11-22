@@ -10,7 +10,7 @@ Built by [MiraNova Studio](https://miranova.studio).
 
 ## Status
 
-**Active development** — v0.9.1
+**Active development** — v0.9.2
 
 Supported platforms: **Linux** and **Windows**. macOS is not a current target.
 
