@@ -1,5 +1,5 @@
 /**
- * © 2025-2026 MiraNova Studios. All rights reserved.
+ * © 2025-2026 MiraNova Studio. All rights reserved.
  */
 
 // Global debug flag — controls console.log / console.info in both processes.

@@ -1,5 +1,5 @@
 /**
- * © 2025-2026 MiraNova Studios. All rights reserved.
+ * © 2025-2026 MiraNova Studio. All rights reserved.
  */
 
 // Re-implement msysToWindows for testing (same logic as main.ts)

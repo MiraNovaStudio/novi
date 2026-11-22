@@ -1,9 +1,9 @@
 # Novi
 
-Novi is a modern Terminal Development Environment (TDE) built with Electron and TypeScript —
-no framework, vanilla TypeScript with direct DOM manipulation. It sits comfortably between
-simplicity and power — more expressive than a text editor, yet free from the excess of a
-traditional IDE.
+Novi is a modern Terminal Development Environment (TDE) from MiraNova Studio, built with
+Electron and TypeScript — no framework, vanilla TypeScript with direct DOM manipulation.
+It sits comfortably between simplicity and power — more expressive than a text editor,
+yet free from the excess of a traditional IDE.
 
 Novi focuses on clarity, performance, and a workspace that feels effortless to use. At its
 core is a Monaco editor with optional vim keybindings, an integrated terminal, a built-in
@@ -523,4 +523,4 @@ Novi is the Terminal Development Environment reimagined for 2026 and beyond.
 
 **Novi** - Build. Learn. Iterate.
 
-MiraNova Studios © 2026
+MiraNova Studio © 2026

@@ -1,5 +1,5 @@
 /**
- * © 2025-2026 MiraNova Studios. All rights reserved.
+ * © 2025-2026 MiraNova Studio. All rights reserved.
  */
 
 /**
@@ -1859,7 +1859,7 @@ export class App extends Component {
     });
     dialog.appendChild(el('h2', { style: 'margin: 0 0 16px 0; color: #cccccc; font-size: 24px;' }, 'Novi Terminal Environment'));
     dialog.appendChild(el('p', { style: 'margin: 8px 0; color: #cccccc; font-size: 14px;' }, `Version ${this.appVersion}`));
-    dialog.appendChild(el('p', { style: 'margin: 16px 0 24px 0; color: #999; font-size: 12px;' }, '\u00A9 2026 MiraNova Studios'));
+    dialog.appendChild(el('p', { style: 'margin: 16px 0 24px 0; color: #999; font-size: 12px;' }, '\u00A9 2026 MiraNova Studio'));
     const btn = el('button', {
       style: "background-color: #007acc; border: none; border-radius: 4px; padding: 8px 24px; color: #ffffff; cursor: pointer; font-size: 14px; font-family: 'Segoe UI', sans-serif;",
     }, 'OK');

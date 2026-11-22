@@ -175,7 +175,7 @@ All new `.ts` and `.js` source files **must** begin with:
 
 ```typescript
 /**
- * © 2025-2026 MiraNova Studios. All rights reserved.
+ * © 2025-2026 MiraNova Studio. All rights reserved.
  */
 ```
 

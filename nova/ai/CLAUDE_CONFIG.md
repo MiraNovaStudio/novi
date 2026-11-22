@@ -66,7 +66,7 @@ AI agent will:
 - **🚨 COPYRIGHT HEADER REQUIREMENT 🚨**: **ALL NEW SOURCE FILES MUST INCLUDE COPYRIGHT HEADER!**
   ```typescript
   /**
-   * © 2025-2026 MiraNova Studios. All rights reserved.
+   * © 2025-2026 MiraNova Studio. All rights reserved.
    */
   ```
   This applies to all `.ts`, `.tsx`, and `.js` files. Do NOT add to `.d.ts` declaration files.

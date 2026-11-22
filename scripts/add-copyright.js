@@ -7,13 +7,13 @@ const path = require('path');
 const glob = require('glob');
 
 const COPYRIGHT_HEADER = `/**
- * © 2025 MiraNova Studios. All rights reserved.
+ * © 2025 MiraNova Studio. All rights reserved.
  * See the LICENSE file in the project root for full license text.
  */
 
 `;
 
-const COPYRIGHT_CHECK = '© 2025 MiraNova Studios';
+const COPYRIGHT_CHECK = '© 2025 MiraNova Studio';
 
 function addCopyrightHeader(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');

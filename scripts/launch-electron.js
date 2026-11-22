@@ -1,5 +1,5 @@
 /**
- * © 2025-2026 MiraNova Studios. All rights reserved.
+ * © 2025-2026 MiraNova Studio. All rights reserved.
  */
 
 // VS Code / Cursor set ELECTRON_RUN_AS_NODE=1 which causes Electron to run as

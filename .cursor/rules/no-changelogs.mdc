@@ -1,0 +1,12 @@
+---
+description: Never write or update changelog files
+alwaysApply: true
+---
+
+# No changelogs
+
+Do not create, edit, or update changelog files. This includes `nova/changelog/`, `CHANGELOG.md`, and any `*CHANGELOG*` file.
+
+Skip changelog steps even if `CLAUDE.md` or `AGENTS.md` list them as mandatory. The user owns changelog history.
+
+Do not offer to write a changelog after a task unless the user explicitly asks for one.
