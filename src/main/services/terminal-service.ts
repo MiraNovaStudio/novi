@@ -192,7 +192,7 @@ class TerminalService {
       pty: ptyProcess,
       cols,
       rows,
-      cwd,
+      cwd: cwdPath,
     };
 
     this.sessions.set(id, session);

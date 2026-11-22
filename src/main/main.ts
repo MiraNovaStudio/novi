@@ -7,6 +7,7 @@ import { app, BrowserWindow, ipcMain, clipboard, dialog, Menu } from 'electron';
 import { join, normalize, dirname } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { hostname } from 'node:os';
 import { readdir, stat, readFile, writeFile, mkdir, rm, rename as fsRename } from 'node:fs/promises';
 import { getSetting, setSetting } from './settings';
 import { logInfo, logError } from './logger';
@@ -27,6 +28,7 @@ import { commandStatsService } from './services/command-stats-service';
 import { SshTitleTracker } from './services/ssh-title-tracker';
 import { cliService, parseStartupArgs } from './services/cli-service';
 import { argvForGui, runCliMode } from './cli-mode';
+import { isLocalOsc7Host, OSC7_RE } from './osc7';
 import { loadAllExtensions } from '../core/extension-loader';
 import { applyImageSaveExtension } from '../core/image/image-utils';
 import { DEBUG } from '../debug';
@@ -331,6 +333,16 @@ function createWindow(): void {
 
 app.setName('NoviEditor');
 app.setAppUserModelId('studio.miranova.novi');
+
+// GNOME's dash matches a running window to its .desktop file. The packaged
+// file is NoviEditor.desktop (Icon= works in Show Apps). Chromium otherwise
+// derives a lowercased novieditor.desktop from the binary name, misses the
+// file on a case-sensitive filesystem, and shows a generic dock icon.
+// --class must equal linux.desktop.StartupWMClass.
+if (process.platform === 'linux') {
+  process.env.CHROME_DESKTOP = 'NoviEditor.desktop';
+  app.commandLine.appendSwitch('class', 'NoviEditor');
+}
 
 function startGui(): void {
 void app.whenReady().then(() => {
@@ -986,7 +998,6 @@ void app.whenReady().then(() => {
   // Terminal IPC handlers
   ipcMain.handle('terminal-create', async (_e, cwd?: string, cols = 80, rows = 24, customId?: string) => {
     try {
-      const cwdPath = cwd || process.cwd();
       const terminalId = terminalService.createSession(cwd, cols, rows, customId);
       const session = terminalService.getSession(terminalId);
       
@@ -994,24 +1005,20 @@ void app.whenReady().then(() => {
         throw new Error('Failed to create terminal session');
       }
 
-      // Send initial CWD so file tree can show it before first PWD from shell
+      // The PTY starts in this directory. Tell the file tree immediately.
+      // Waiting only for OSC 7 leaves a fresh Linux install spinning: Debian's
+      // vte.sh replaces PROMPT_COMMAND and reports file://<hostname>/..., which
+      // the old localhost-only check ignored.
+      const cwdPath = session.cwd || process.cwd();
       if (!mainWindowRef.isDestroyed()) {
         mainWindowRef.webContents.send('terminal-initial-cwd', terminalId, cwdPath);
-        // Shells without PROMPT_COMMAND (cmd, powershell) never emit OSC 7,
-        // so the file tree stays in loading state. Send terminal-pwd directly.
-        const shellType = terminalService.getShellType();
-        const isBashLike = shellType === 'gitbash' || shellType === 'wsl' || shellType === 'linux';
-        if (!isBashLike) {
-          mainWindowRef.webContents.send('terminal-pwd', terminalId, cwdPath);
-        }
+        mainWindowRef.webContents.send('terminal-pwd', terminalId, cwdPath);
       }
 
-      // Forward PTY output to renderer
-      // OSC 7 CWD notification: ESC ] 7 ; file://hostname/path BEL-or-ST
-      // Host is captured so we can tell our own injected local report (always "localhost")
-      // apart from a remote shell that happens to emit its own OSC 7 (e.g. distro vte.sh
-      // integration) — only the former should be treated as "the local prompt redrew".
-      const OSC7_RE = /\x1b\]7;file:\/\/([^/]*)(\/[^\x07\x1b]*)(?:\x07|\x1b\\)/;
+      // OSC 7 CWD notification: ESC ] 7 ; file://hostname/path BEL-or-ST.
+      // Local when the host is empty, localhost, or this machine's hostname.
+      // A remote shell's OSC 7 uses the remote hostname and is ignored.
+      const localHostname = hostname();
       // Track whether we still need to inject a cd for workspace restore.
       // The first OSC 7 proves bash has fully initialized (PROMPT_COMMAND fired).
       let pendingCdRestore = cwd ? cwd : null;
@@ -1042,7 +1049,7 @@ void app.whenReady().then(() => {
         if (mainWindowRef && !mainWindowRef.isDestroyed()) {
           // Parse OSC 7 to extract CWD (invisible to xterm.js — no stripping needed)
           const osc7Match = OSC7_RE.exec(data);
-          const isLocalOsc7 = !!osc7Match && (!osc7Match[1] || osc7Match[1] === 'localhost');
+          const isLocalOsc7 = !!osc7Match && isLocalOsc7Host(osc7Match[1], localHostname);
           if (osc7Match && isLocalOsc7) {
             const rawPath = decodeURIComponent(osc7Match[2]);
             const resolvedPath = process.platform === 'win32' ? msysToWindows(rawPath) : rawPath;

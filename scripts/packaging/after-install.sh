@@ -11,6 +11,10 @@ cat > '/opt/${sanitizedProductName}/novi' << 'EOF'
 #!/bin/sh
 APP='/opt/${sanitizedProductName}/${executable}'
 SOCK="$HOME/.novi/novi-editor.sock"
+# Set before exec so a terminal launch is tied to the same desktop file
+# GNOME uses for Show Apps. Chromium would otherwise look for a lowercased
+# desktop filename and miss NoviEditor.desktop.
+export CHROME_DESKTOP='${executable}.desktop'
 
 # A socket file can outlive a crashed editor. Only hand off when something
 # is actually listening; otherwise start the window in its own session.

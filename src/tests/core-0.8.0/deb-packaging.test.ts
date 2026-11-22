@@ -9,7 +9,7 @@ interface PackageJson {
   scripts?: Record<string, string>;
   build?: {
     directories?: { buildResources?: string };
-    linux?: { executableName?: string };
+    linux?: { executableName?: string; desktop?: { StartupWMClass?: string } };
     deb?: { afterInstall?: string; afterRemove?: string; compression?: string };
   };
 }
@@ -62,6 +62,15 @@ describe('Debian packaging scripts', () => {
 
   it('keeps the Linux binary named NoviEditor so it does not collide with the novi wrapper', () => {
     expect(packageJson.build?.linux?.executableName).toBe('NoviEditor');
+  });
+
+  it('ties the running window to NoviEditor.desktop so GNOME uses the app icon', () => {
+    expect(packageJson.build?.linux?.desktop?.StartupWMClass).toBe('NoviEditor');
+    const install = readFileSync(join(ROOT, 'scripts', 'packaging', 'after-install.sh'), 'utf-8');
+    expect(install).toContain("export CHROME_DESKTOP='${executable}.desktop'");
+    const main = readFileSync(join(ROOT, 'src', 'main', 'main.ts'), 'utf-8');
+    expect(main).toContain("process.env.CHROME_DESKTOP = 'NoviEditor.desktop'");
+    expect(main).toContain("app.commandLine.appendSwitch('class', 'NoviEditor')");
   });
 
   it('copy-icons.js generates Linux hicolor PNGs on every host OS', () => {
