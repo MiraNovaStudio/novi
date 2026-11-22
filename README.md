@@ -72,7 +72,7 @@ src/
 │   └── shims/                         # Monaco API shims
 ├── tests/                              # Jest unit tests, grouped by sprint
 │   ├── setup.ts                        # Test setup (mocks electron, suppresses console)
-│   ├── __mocks__/
+│   ├── mocks/                          # Monaco Editor Jest mock
 │   └── core-0.1.0/ … core-0.8.0/
 └── types/
     └── global.d.ts                     # window.api type definitions
@@ -197,7 +197,7 @@ npm run test:coverage
 
 - **Jest** with **ts-jest** for TypeScript support
 - **jsdom** environment for DOM testing
-- Monaco Editor is mocked via `__mocks__/monaco-editor.ts` (root level)
+- Monaco Editor is mocked via `src/tests/mocks/monaco-editor.ts`
 - Tests are organized by sprint in `src/tests/core-0.1.0` through `src/tests/core-0.8.0`
 
 ## Packaging

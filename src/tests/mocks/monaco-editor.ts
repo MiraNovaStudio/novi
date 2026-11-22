@@ -1,6 +1,11 @@
 /**
- * Manual mock for monaco-editor
- * Used in unit tests to avoid loading the full Monaco library
+ * © 2025-2026 MiraNova Studio. All rights reserved.
+ * See the LICENSE file in the project root for full license text.
+ */
+
+/**
+ * Manual mock for monaco-editor.
+ * Used in unit tests to avoid loading the full Monaco library.
  */
 
 export const mockEditor = {
@@ -13,18 +18,16 @@ export const mockEditor = {
   getModel: jest.fn(() => ({
     uri: { toString: () => 'file:///test.ts' },
   })),
-  onDidChangeModelContent: jest.fn((_callback) => {
-    // Return a disposable
-    return {
-      dispose: jest.fn(),
-    };
-  }),
+  onDidChangeModelContent: jest.fn((_callback: unknown) => ({
+    dispose: jest.fn(),
+  })),
 };
 
 export const editor = {
   create: jest.fn(() => mockEditor),
   setTheme: jest.fn(),
   setModelLanguage: jest.fn(),
+  defineTheme: jest.fn(),
   addKeybindingRules: jest.fn(() => ({ dispose: jest.fn() })),
 };
 
@@ -53,10 +56,8 @@ export const KeyCode = {
   F3: 61,
 };
 
-// Default export for easier mocking
 export default {
   editor,
   KeyMod,
   KeyCode,
 };
-

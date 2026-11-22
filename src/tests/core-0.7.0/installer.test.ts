@@ -109,12 +109,12 @@ describe('Windows Installer Configuration', () => {
 
   describe('NSIS custom script', () => {
     it('should have installer.nsh for running app detection', () => {
-      const nshPath = join(__dirname, '..', '..', '..', 'build', 'installer.nsh');
+      const nshPath = join(__dirname, '..', '..', '..', 'scripts', 'packaging', 'installer.nsh');
       expect(existsSync(nshPath)).toBe(true);
     });
 
     it('installer.nsh should check for running Novi process', () => {
-      const nshPath = join(__dirname, '..', '..', '..', 'build', 'installer.nsh');
+      const nshPath = join(__dirname, '..', '..', '..', 'scripts', 'packaging', 'installer.nsh');
       const content = readFileSync(nshPath, 'utf-8');
       expect(content).toContain('customInit');
       expect(content).toContain('customUnInit');
@@ -123,7 +123,7 @@ describe('Windows Installer Configuration', () => {
     });
 
     it('installer.nsh should install the novi CLI wrapper and register it on PATH', () => {
-      const nshPath = join(__dirname, '..', '..', '..', 'build', 'installer.nsh');
+      const nshPath = join(__dirname, '..', '..', '..', 'scripts', 'packaging', 'installer.nsh');
       const content = readFileSync(nshPath, 'utf-8');
       expect(content).toContain('customInstall');
       expect(content).toContain('customUnInstall');
@@ -133,7 +133,7 @@ describe('Windows Installer Configuration', () => {
     });
 
     it('installer.nsh should install an extensionless bash wrapper for git-bash', () => {
-      const nshPath = join(__dirname, '..', '..', '..', 'build', 'installer.nsh');
+      const nshPath = join(__dirname, '..', '..', '..', 'scripts', 'packaging', 'installer.nsh');
       const content = readFileSync(nshPath, 'utf-8');
       expect(content).toContain('$INSTDIR\\novi"');
       expect(content).toContain('#!/bin/bash');

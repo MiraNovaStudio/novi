@@ -29,7 +29,7 @@ npm run clean
 echo "Building TypeScript..."
 npm run build
 
-# Copy icon into build/ for electron-builder
+# Generate pack icons into scripts/packaging for electron-builder
 npm run copy:icon
 
 export CSC_IDENTITY_AUTO_DISCOVERY=false

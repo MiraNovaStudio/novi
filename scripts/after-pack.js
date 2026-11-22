@@ -16,7 +16,7 @@ module.exports = async function afterPack(context) {
   }
 
   const exe = path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.exe`);
-  const ico = path.resolve('build', 'icon.ico');
+  const ico = path.resolve('scripts/packaging', 'icon.ico');
 
   try {
     await rcedit(exe, {

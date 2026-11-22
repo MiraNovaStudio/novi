@@ -59,7 +59,7 @@
     "productName": "Novi",
     "appId": "studio.miranova.novi",
     "directories": {
-      "buildResources": "build"
+      "buildResources": "scripts/packaging"
     },
     "files": [
       "dist/**",
@@ -72,7 +72,7 @@
       }
     ],
     "linux": {
-      "icon": "build/icons",
+      "icon": "scripts/packaging/icons",
       "category": "Development",
       "executableName": "NoviEditor",
       "target": [
@@ -88,11 +88,11 @@
       }
     },
     "deb": {
-      "afterInstall": "build/after-install.sh",
-      "afterRemove": "build/after-remove.sh"
+      "afterInstall": "scripts/packaging/after-install.sh",
+      "afterRemove": "scripts/packaging/after-remove.sh"
     },
     "win": {
-      "icon": "build/icon.ico",
+      "icon": "scripts/packaging/icon.ico",
       "executableName": "NoviEditor",
       "signAndEditExecutable": false,
       "compression": "store",
@@ -111,9 +111,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
+      "installerIcon": "scripts/packaging/icon.ico",
+      "uninstallerIcon": "scripts/packaging/icon.ico",
+      "installerHeaderIcon": "scripts/packaging/icon.ico",
       "shortcutName": "Novi",
       "uninstallDisplayName": "Novi",
       "allowElevation": true

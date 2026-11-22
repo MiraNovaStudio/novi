@@ -7,10 +7,15 @@ msys2/
 # Build output
 dist/
 out/
-build/*
-!build/installer.nsh
 temp/
 tmp/
+
+# Generated pack icons (scripts/copy-icons.js)
+scripts/packaging/icon.ico
+scripts/packaging/icon.png
+scripts/packaging/icons/
+scripts/packaging/installer-icon.ico
+scripts/packaging/installer-icon-square.png
 
 # TypeScript
 *.tsbuildinfo

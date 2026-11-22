@@ -31,7 +31,7 @@ global.console = {
 };
 
 // Mock Monaco Editor global for tests that need it
-(global as any).monaco = require('./__mocks__/monaco-editor').default;
+(global as any).monaco = require('./mocks/monaco-editor').default;
 
 // Stub the canvas 2D context. jsdom doesn't implement it (that needs the
 // native `canvas` package) and logs a noisy "Not implemented" error via its

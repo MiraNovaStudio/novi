@@ -112,7 +112,7 @@ Two modes controlled by the `singlefiletree` setting:
 - Jest + ts-jest, jsdom environment
 - Tests cover `.ts` files only
 - `src/tests/setup.ts` mocks `electron` (app.getPath) and suppresses console.log/info/warn
-- Monaco Editor is mocked via `__mocks__/monaco-editor.ts` (root level, not in `src/`)
+- Monaco Editor is mocked via `src/tests/mocks/monaco-editor.ts`
 - Test suites: `core-0.1.0` through `core-0.7.0` (one directory per sprint)
 
 ## Renderer Import Conventions

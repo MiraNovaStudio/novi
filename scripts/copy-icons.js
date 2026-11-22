@@ -6,15 +6,15 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const buildDir = path.resolve('build');
-const iconsDir = path.join(buildDir, 'icons');
+const packagingDir = path.resolve('scripts/packaging');
+const iconsDir = path.join(packagingDir, 'icons');
 fs.mkdirSync(iconsDir, { recursive: true });
 
 const appIcon = path.resolve('src/renderer/assets/icon.png');
 const installerIcon = path.resolve('src/renderer/assets/miranova_icon.png');
 
 // Copy app icon PNG
-fs.copyFileSync(appIcon, path.join(buildDir, 'icon.png'));
+fs.copyFileSync(appIcon, path.join(packagingDir, 'icon.png'));
 
 const isLinux = process.platform === 'linux';
 
@@ -35,8 +35,8 @@ if (isLinux) {
 } else {
   // Generate app .ico (for Windows exe)
   try {
-    execSync(`npx --yes png-to-ico "${appIcon}" > "${path.join(buildDir, 'icon.ico')}"`, { shell: true });
-    console.log('Generated build/icon.ico');
+    execSync(`npx --yes png-to-ico "${appIcon}" > "${path.join(packagingDir, 'icon.ico')}"`, { shell: true });
+    console.log('Generated scripts/packaging/icon.ico');
   } catch (e) {
     console.log('Failed to generate icon.ico: ' + e.message);
   }
@@ -57,16 +57,16 @@ if (!isLinux) try {
     .png()
     .toBuffer()
     .then(buf => {
-      const squarePath = path.join(buildDir, 'installer-icon-square.png');
+      const squarePath = path.join(packagingDir, 'installer-icon-square.png');
       fs.writeFileSync(squarePath, buf);
-      execSync(`npx --yes png-to-ico "${squarePath}" > "${path.join(buildDir, 'installer-icon.ico')}"`, { shell: true });
-      console.log('Generated build/installer-icon.ico');
+      execSync(`npx --yes png-to-ico "${squarePath}" > "${path.join(packagingDir, 'installer-icon.ico')}"`, { shell: true });
+      console.log('Generated scripts/packaging/installer-icon.ico');
     })
     .catch(e => console.log('Failed to generate installer-icon.ico: ' + e.message));
 } catch (e) {
   // Fallback: if sharp is unavailable and installer-icon.ico already exists, skip
-  if (fs.existsSync(path.join(buildDir, 'installer-icon.ico'))) {
-    console.log('Using existing build/installer-icon.ico (sharp not available)');
+  if (fs.existsSync(path.join(packagingDir, 'installer-icon.ico'))) {
+    console.log('Using existing scripts/packaging/installer-icon.ico (sharp not available)');
   } else {
     console.log('Cannot generate installer-icon.ico — sharp not available. Run: cd /tmp/icongen && npm install sharp');
   }
