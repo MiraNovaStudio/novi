@@ -4,8 +4,6 @@
 
 import * as net from 'net';
 import * as path from 'path';
-import { spawn } from 'child_process';
-import { app } from 'electron';
 import { getPipePath } from './services/cli-service';
 
 type CliCommand =
@@ -17,8 +15,16 @@ type CliCommand =
  * Parses the user-visible arguments that follow --novi-cli into a typed command.
  * Exported for unit testing.
  */
+function markerIndex(argv: string[]): number {
+  const cli = argv.indexOf('--novi-cli');
+  const direct = argv.indexOf('--novi-direct');
+  if (cli < 0) return direct;
+  if (direct < 0) return cli;
+  return Math.min(cli, direct);
+}
+
 export function parseCliModeArgs(argv: string[], cwd: string): CliCommand {
-  const cliIdx = argv.indexOf('--novi-cli');
+  const cliIdx = markerIndex(argv);
   const userArgs = cliIdx >= 0 ? argv.slice(cliIdx + 1) : [];
 
   if (userArgs.length === 0) {
@@ -41,27 +47,40 @@ function startupFlagsFor(cmd: CliCommand): string[] {
   }
 }
 
-function spawnNoviEditor(extraArgs: string[]): void {
-  const bin = process.execPath;
-  // In dev: execPath is the Electron binary; the app directory must be passed as the first arg.
-  // In packaged builds: execPath is NoviEditor itself; no extra base arg needed.
-  const baseArgs = app.isPackaged ? [] : [app.getAppPath()];
-  spawn(bin, [...baseArgs, ...extraArgs], { detached: true, stdio: 'ignore' }).unref();
+/**
+ * Argv for this same process to become the GUI. Drops `--novi-cli` /
+ * `--novi-direct` so parseStartupArgs will see the startup flags.
+ * No user args means a normal launch (restore the last session).
+ */
+export function argvForGui(argv: string[], cwd: string): string[] {
+  const idx = markerIndex(argv);
+  const head = idx >= 0 ? argv.slice(0, idx) : argv.slice();
+  const userArgs = idx >= 0 ? argv.slice(idx + 1) : [];
+  if (userArgs.length === 0) return head;
+  return [...head, ...startupFlagsFor(parseCliModeArgs(argv, cwd))];
 }
 
 /**
- * Runs the headless CLI client mode.
- * Connects to the running NoviEditor socket, sends the command, and exits.
- * If NoviEditor is not running, spawns it with the appropriate startup flags instead.
- * Always calls app.exit(0) when done — no window is ever created.
+ * Deliver a command to an already-running NoviEditor.
+ * Returns true when the running instance accepted it.
+ * Returns false when nothing is listening — the caller must become the GUI
+ * in this process. Spawning a second Electron and then app.exit() kills
+ * that window on Linux, because Chromium tears its children down on exit.
  */
-export async function runCliMode(argv: string[], cwd: string): Promise<void> {
+export async function runCliMode(argv: string[], cwd: string): Promise<boolean> {
   const cmd = parseCliModeArgs(argv, cwd);
   const sockPath = getPipePath();
 
-  await new Promise<void>((resolve) => {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
     let connected = false;
     const socket = net.connect(sockPath);
+    const finish = (delivered: boolean): void => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(delivered);
+    };
 
     socket.on('connect', () => {
       connected = true;
@@ -69,28 +88,12 @@ export async function runCliMode(argv: string[], cwd: string): Promise<void> {
       socket.end(JSON.stringify(cmd) + '\n');
     });
 
-    socket.on('data', () => {
-      // Response received — command delivered; socket closes naturally after this
-    });
+    socket.on('close', () => finish(connected));
 
-    socket.on('close', () => resolve());
-
-    socket.on('error', () => {
-      if (!connected) {
-        // `novi` with no args + no running instance: just launch normally (restore last session)
-        const flags = cmd.cmd === 'new-file' ? [] : startupFlagsFor(cmd);
-        spawnNoviEditor(flags);
-      }
-      resolve();
-    });
+    socket.on('error', () => finish(false));
 
     // Safety timeout: give up after 3 seconds regardless
     socket.setTimeout(3000);
-    socket.on('timeout', () => {
-      socket.destroy();
-      resolve();
-    });
+    socket.on('timeout', () => finish(false));
   });
-
-  app.exit(0);
 }

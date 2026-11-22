@@ -9,7 +9,31 @@
 # ${executable}; this script is the user-facing entry point.
 cat > '/opt/${sanitizedProductName}/novi' << 'EOF'
 #!/bin/sh
-exec '/opt/${sanitizedProductName}/${executable}' --novi-cli "$@"
+APP='/opt/${sanitizedProductName}/${executable}'
+SOCK="$HOME/.novi/novi-editor.sock"
+
+# A socket file can outlive a crashed editor. Only hand off when something
+# is actually listening; otherwise start the window in its own session.
+# Do not exec --novi-cli for a cold start: that path used to spawn a second
+# Electron and exit, and the exit took the window with it.
+if [ -S "$SOCK" ] && command -v python3 >/dev/null 2>&1 && python3 -c 'import socket,sys
+s=socket.socket(socket.AF_UNIX)
+s.settimeout(0.3)
+try:
+    s.connect(sys.argv[1])
+except Exception:
+    sys.exit(1)
+s.close()
+' "$SOCK"; then
+  exec "$APP" --novi-cli "$@"
+fi
+
+mkdir -p "$HOME/.novi"
+if command -v setsid >/dev/null 2>&1; then
+  nohup setsid "$APP" --novi-direct "$@" >>"$HOME/.novi/launch.log" 2>&1 &
+else
+  nohup "$APP" --novi-direct "$@" >>"$HOME/.novi/launch.log" 2>&1 &
+fi
 EOF
 chmod +x '/opt/${sanitizedProductName}/novi'
 

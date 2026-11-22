@@ -36,8 +36,8 @@ export CSC_IDENTITY_AUTO_DISCOVERY=false
 
 case "$TARGET" in
     deb)
-        echo "Building Debian package..."
-        npx electron-builder --linux deb
+        echo "Building Debian package (gzip — fpm prints nothing until it finishes)..."
+        npx electron-builder --linux deb --publish never
         ;;
     win)
         echo "Building Windows portable..."

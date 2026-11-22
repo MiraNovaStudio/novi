@@ -26,12 +26,21 @@ import { initializeMenu, setMenuCommandHandler, MenuCommand, buildMenu } from '.
 import { commandStatsService } from './services/command-stats-service';
 import { SshTitleTracker } from './services/ssh-title-tracker';
 import { cliService, parseStartupArgs } from './services/cli-service';
-import { runCliMode } from './cli-mode';
+import { argvForGui, runCliMode } from './cli-mode';
 import { loadAllExtensions } from '../core/extension-loader';
 import { applyImageSaveExtension } from '../core/image/image-utils';
 import { DEBUG } from '../debug';
+import { linuxNeedsSoftwareGl } from './software-gl';
 
 let mainWindowRef: BrowserWindow | null = null;
+
+// VMware/KVM guests report "No 3D enabled" and Chromium then never paints.
+// The frameless window stays show:false forever. Must run before ready.
+if (linuxNeedsSoftwareGl()) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-gpu');
+  logInfo('Software rendering enabled (virtual machine without 3D)');
+}
 
 // --- Debug logging gate (main process) ---
 if (!DEBUG) {
@@ -215,10 +224,9 @@ function createWindow(): void {
   initializeMenu(mainWindow);
   mainWindow.setMenuBarVisibility(true);
 
-  // Show window when ready to prevent white screen
-  mainWindow.once('ready-to-show', () => {
+  const reveal = (): void => {
+    if (mainWindow.isDestroyed() || mainWindow.isVisible()) return;
     mainWindow.show();
-    
     // Force window to foreground on Windows
     if (process.platform === 'win32') {
       mainWindow.setAlwaysOnTop(true);
@@ -227,9 +235,18 @@ function createWindow(): void {
     } else {
       mainWindow.focus();
     }
-    
     logInfo('Window shown and focused');
+  };
+
+  // Show when the first paint is ready. If the GPU never paints (common in
+  // a VMware guest with 3D disabled), reveal anyway so the process is not
+  // left running with no window.
+  const revealFallback = setTimeout(reveal, 2000);
+  mainWindow.once('ready-to-show', () => {
+    clearTimeout(revealFallback);
+    reveal();
   });
+  mainWindow.once('closed', () => clearTimeout(revealFallback));
 
   // Persist bounds on close
   const saveBounds = (): void => {
@@ -315,10 +332,7 @@ function createWindow(): void {
 app.setName('NoviEditor');
 app.setAppUserModelId('studio.miranova.novi');
 
-if (process.argv.includes('--novi-cli')) {
-  void runCliMode(process.argv, process.cwd());
-} else {
-
+function startGui(): void {
 void app.whenReady().then(() => {
   logInfo('App ready');
   
@@ -1236,7 +1250,23 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-} // end of GUI-mode block
+}
+
+if (process.argv.includes('--novi-cli')) {
+  void runCliMode(process.argv, process.cwd()).then((delivered) => {
+    if (delivered) {
+      app.exit(0);
+      return;
+    }
+    process.argv = argvForGui(process.argv, process.cwd());
+    startGui();
+  });
+} else {
+  if (process.argv.includes('--novi-direct')) {
+    process.argv = argvForGui(process.argv, process.cwd());
+  }
+  startGui();
+}
 
 // Crash reporting
 process.on('uncaughtException', (err) => {

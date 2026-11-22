@@ -8,7 +8,7 @@ import * as net from 'net';
 import * as fs from 'fs';
 
 import { getPipePath, parseStartupArgs, cliService } from '../../main/services/cli-service';
-import { parseCliModeArgs } from '../../main/cli-mode';
+import { argvForGui, parseCliModeArgs } from '../../main/cli-mode';
 
 jest.mock('fs');
 jest.mock('net');
@@ -63,6 +63,25 @@ describe('parseCliModeArgs', () => {
   it('resolves a relative file arg against the caller cwd', () => {
     const result = parseCliModeArgs(['--novi-cli', 'src/f.ts'], cwd);
     expect(result).toEqual({ cmd: 'open-file', path: path.resolve(cwd, 'src/f.ts') });
+  });
+
+  it('argvForGui drops --novi-cli when there is no file or terminal request', () => {
+    expect(argvForGui(['NoviEditor', '--novi-cli'], cwd)).toEqual(['NoviEditor']);
+  });
+
+  it('argvForGui turns a file arg into a startup flag', () => {
+    expect(argvForGui(['NoviEditor', '--novi-direct', 'src/f.ts'], cwd)).toEqual([
+      'NoviEditor',
+      `--novi-open-file=${path.resolve(cwd, 'src/f.ts')}`,
+    ]);
+  });
+
+  it('argvForGui turns -t into an open-terminal startup flag', () => {
+    expect(argvForGui(['NoviEditor', '--novi-cli', '-t'], cwd)).toEqual([
+      'NoviEditor',
+      '--novi-open-terminal',
+      `--novi-cwd=${cwd}`,
+    ]);
   });
 
   it('passes through an absolute file arg unchanged', () => {

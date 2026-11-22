@@ -11,7 +11,9 @@ const { rcedit } = require('rcedit');
  * since signAndEditExecutable is false (to avoid winCodeSign symlink issues).
  */
 module.exports = async function afterPack(context) {
-  if (process.platform !== 'win32') {
+  // Host OS is not enough: packing `--linux deb` on Windows still runs this
+  // hook, and rcedit cannot load the ELF NoviEditor binary.
+  if (process.platform !== 'win32' || context.electronPlatformName !== 'win32') {
     return;
   }
 

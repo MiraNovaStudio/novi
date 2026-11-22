@@ -10,7 +10,7 @@ interface PackageJson {
   build?: {
     directories?: { buildResources?: string };
     linux?: { executableName?: string };
-    deb?: { afterInstall?: string; afterRemove?: string };
+    deb?: { afterInstall?: string; afterRemove?: string; compression?: string };
   };
 }
 
@@ -30,6 +30,11 @@ describe('Debian packaging scripts', () => {
 
   it('has pack:deb', () => {
     expect(packageJson.scripts?.['pack:deb']).toContain('--linux deb');
+    expect(packageJson.scripts?.['pack:deb']).toContain('--publish never');
+  });
+
+  it('uses gzip for the .deb so fpm does not sit in silent xz compression', () => {
+    expect(packageJson.build?.deb?.compression).toBe('gz');
   });
 
   it('after-install.sh exists and installs the novi CLI wrapper', () => {
@@ -37,8 +42,10 @@ describe('Debian packaging scripts', () => {
     expect(existsSync(path)).toBe(true);
     const content = readFileSync(path, 'utf-8');
     expect(content).toContain('--novi-cli');
+    expect(content).toContain('--novi-direct');
+    expect(content).toContain('setsid');
     expect(content).toContain("cat > '/opt/${sanitizedProductName}/novi'");
-    expect(content).toContain("exec '/opt/${sanitizedProductName}/${executable}' --novi-cli");
+    expect(content).toContain('exec "$APP" --novi-cli "$@"');
     expect(content).toContain("update-alternatives --install '/usr/bin/novi'");
     expect(content).toContain('chrome-sandbox');
     expect(content).toContain('gtk-update-icon-cache');
@@ -55,5 +62,19 @@ describe('Debian packaging scripts', () => {
 
   it('keeps the Linux binary named NoviEditor so it does not collide with the novi wrapper', () => {
     expect(packageJson.build?.linux?.executableName).toBe('NoviEditor');
+  });
+
+  it('copy-icons.js generates Linux hicolor PNGs on every host OS', () => {
+    const src = readFileSync(join(ROOT, 'scripts', 'copy-icons.js'), 'utf-8');
+    expect(src).toContain('LINUX_ICON_SIZES');
+    expect(src).toContain('generateLinuxIcons');
+    expect(src).toMatch(/await generateLinuxIcons\(sharp\)/);
+    expect(src).not.toMatch(/if\s*\(\s*isLinux\s*\)/);
+  });
+
+  it('after-pack.js only embeds an icon when the pack target is Windows', () => {
+    const src = readFileSync(join(ROOT, 'scripts', 'after-pack.js'), 'utf-8');
+    expect(src).toContain('electronPlatformName');
+    expect(src).toMatch(/electronPlatformName !== 'win32'/);
   });
 });
