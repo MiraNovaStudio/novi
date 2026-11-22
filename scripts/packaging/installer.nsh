@@ -1,4 +1,4 @@
-; © 2025-2026 MiraNova Studios. All rights reserved.
+; © 2025-2026 MiraNova Studio. All rights reserved.
 ;
 ; electron-builder NSIS custom script.
 ; Terminates any running NoviEditor.exe before install/uninstall proceeds so
