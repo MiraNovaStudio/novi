@@ -14,8 +14,6 @@ Built by [MiraNova Studio](https://miranova.studio).
 
 Supported platforms: **Linux** and **Windows**. macOS is not a current target.
 
-Product page: [miranova.studio/projects/novi.html](https://miranova.studio/projects/novi.html)
-
 ---
 
 ## Philosophy
@@ -48,7 +46,7 @@ Product page: [miranova.studio/projects/novi.html](https://miranova.studio/proje
 - **Node.js** 18+ (20 LTS recommended)
 - **npm** 9+
 - **Git**
-- **Windows:** [Windows Terminal](https://aka.ms/terminal) or Git Bash
+- **Windows:** PowerShell, `cmd.exe`, or Git Bash (`bash.exe`) — one of these is used as the integrated-terminal shell
 - **Linux:** `libx11-dev`, `libxkbfile-dev`, `libsecret-1-dev` (native modules)
 
 ---
@@ -56,7 +54,7 @@ Product page: [miranova.studio/projects/novi.html](https://miranova.studio/proje
 ## Setup
 
 ```bash
-git clone https://github.com/aeonath/novi.git
+git clone https://github.com/MiraNovaStudio/novi.git
 cd novi
 npm install
 npm start
@@ -314,21 +312,11 @@ Main-process logs are written to date-stamped files under the Electron user-data
 5. Add tests under `src/tests/` for the current yield version. Do not relocate older sprint tests.
 6. Run `npm test` and `npm run lint` before opening a pull request.
 
-Please open an issue or [contact MiraNova Studio](https://miranova.studio/contact.html) before large architectural changes.
-
 ---
 
 ## License
 
 [MIT](./LICENSE) © 2025-2026 MiraNova Studio
-
----
-
-## Support
-
-- **Product page:** [miranova.studio/projects/novi.html](https://miranova.studio/projects/novi.html)
-- **Contact:** [miranova.studio/contact.html](https://miranova.studio/contact.html)
-- **Source:** [github.com/aeonath/novi](https://github.com/aeonath/novi)
 
 ---
 
